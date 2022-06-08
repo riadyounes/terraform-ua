@@ -38,9 +38,3 @@ variable "rds_database" {
   description = "database name for RDS"
   default     = "rds_database"
 }
-
-variable "pair_key" {
-  type        = string
-  description = "you pair key NAME from AWS EC2"
-
-}
