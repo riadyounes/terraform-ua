@@ -8,11 +8,19 @@ terraform {
 
   required_version = ">= 1.1.0"
 }
-
 provider "aws" {
   profile = "user-terraform"
   region  = var.aws_region
 }
+
+module "instance" {
+  source = "./modules/ec2"
+
+  ami           = "$(var.ami)"
+  instance_type = "$(var.instance_type)"
+
+}
+
 
 resource "aws_db_instance" "default" {
   allocated_storage    = 10
@@ -28,8 +36,8 @@ resource "aws_db_instance" "default" {
 }
 
 resource "aws_instance" "my_app" {
-  ami           = var.instance_ami
-  instance_type = var.instance_type
+  ami           = "$(var.ami)"
+  instance_type = "$(var.instance_type)"
 
   connection {
     type    = "ssh"

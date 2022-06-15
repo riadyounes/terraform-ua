@@ -3,22 +3,14 @@ variable "user-terraform" {
   description = ""
 }
 
-variable "instance_ami" {
-  type        = string
-  description = ""
-  default     = "ami-09d56f8956ab235b3"
-}
+
 variable "rds_password" {
   type        = string
   description = "password for RDS"
   default     = "12345678"
 }
 
-variable "instance_type" {
-  type        = string
-  description = ""
-  default     = "t2.micro"
-}
+
 
 variable "aws_region" {
   type        = string
