@@ -2,11 +2,11 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 3.27"
+      version = "~> 4.17.1"
     }
   }
 
-  required_version = ">= 1.1.0"
+  required_version = ">= 0.14.9"
 }
 
 provider "aws" {
@@ -14,12 +14,105 @@ provider "aws" {
   region  = var.aws_region
 }
 
+resource "aws_security_group" "ssh-access" {
+  tags = {
+    "Name" = "SSH Access"
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    description = "SSH"
+    cidr_blocks = ["0.0.0.0/0"]
+
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "backend-access" {
+  tags = {
+    "Name" = "Backend Access"
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "db-access" {
+  tags = {
+    "Name" = "DB Access"
+  }
+
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.backend-access.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_instance" "backend" {
+  ami           = var.instance_ami
+  instance_type = var.instance_type
+
+  user_data = <<-EOF
+    #!/bin/bash
+    sudo apt update -y 
+    sudo apt install curl -y
+    sudo apt install git -y
+    sudo apt-get install \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+      $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt-get update
+    sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
+  EOF
+
+  vpc_security_group_ids = [
+    aws_security_group.ssh-access.id,
+    aws_security_group.backend-access.id
+  ]
+
+
+}
+
 resource "aws_db_instance" "default" {
   allocated_storage    = 10
   engine               = "mysql"
   engine_version       = "5.7"
   instance_class       = "db.t3.micro"
-  name                 = var.rds_database
+  db_name              = var.rds_database
   username             = var.rds_username
   password             = var.rds_password
   parameter_group_name = "default.mysql5.7"
@@ -27,32 +120,3 @@ resource "aws_db_instance" "default" {
   publicly_accessible  = false
 }
 
-resource "aws_instance" "my_app" {
-  ami           = var.instance_ami
-  instance_type = var.instance_type
-
-  connection {
-    type    = "ssh"
-    host    = self.public_ip
-    user    = "ubuntu"
-    timeout = "4m"
-  }
-
-  tags = {
-    name = "Entrega 4 Terraform"
-  }
-
-  user_data = <<-EOF
-        #!/bin/bash
-        set -ex # -e  Exit immediately if a command exits with a non-zero status.
-                # -x  Print commands and their arguments as they are executed.
-        sudo apt update
-        curl -fsSL https://get.docker.com | sh
-        sudo usermod -a -G docker ubuntu
-        sudo curl -L https://github.com/docker/compose/releases/download/2.6.0/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
-        sudo docker pull jonasxpx/projeto4:latest
-        sudo docker run -e HOST=${aws_db_instance.default.address} -e PASS=${var.rds_password} -e DB=${var.rds_database} -e PORT=${aws_db_instance.default.port} -e USER=${var.rds_username} jonasxpx/projeto4:1
-    EOF
-
-}

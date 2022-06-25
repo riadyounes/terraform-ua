@@ -1,12 +1,11 @@
 variable "user-terraform" {
-  type        = string
-  description = ""
+  type    = string
+  default = "user-terraform"
 }
 
 variable "instance_ami" {
-  type        = string
-  description = ""
-  default     = "ami-09d56f8956ab235b3"
+  type    = string
+  default = "ami-09d56f8956ab235b3"
 }
 variable "rds_password" {
   type        = string
@@ -15,15 +14,13 @@ variable "rds_password" {
 }
 
 variable "instance_type" {
-  type        = string
-  description = ""
-  default     = "t2.micro"
+  type    = string
+  default = "t2.micro"
 }
 
 variable "aws_region" {
-  type        = string
-  description = ""
-  default     = "us-east-1"
+  type    = string
+  default = "us-east-1"
 }
 
 
